@@ -72,7 +72,7 @@ class Burner {
    * @param mixed $mixed
    * @throws \RuntimeException
    */
-  public function handleMixedParams($mixed) {
+  protected function handleMixedParams($mixed) {
     if (is_array($mixed)) {
       //checks if all the table columns are present in the input ignoring order. 
       //Alternative check would have been sorting both array's keys and comparing     
@@ -84,7 +84,7 @@ class Burner {
       $this->queryOne($mixed);
     }
     if( !self::$primaryKeyCache[$this->table] ){
-      throw new \RuntimeException('Cannot infer primary key for ' . $this->table .'.');
+      throw new Exceptions\BurnerException('Cannot infer primary key for ' . $this->table .'.');
     }
     $this->fetchOne(array(self::$primaryKeyCache[$this->table] => $mixed));
   }
@@ -109,7 +109,7 @@ class Burner {
   protected function fetchTableMap() {
     $fields = $this->pdo->query("SHOW FIELDS from $this->table")->fetchAll(\PDO::FETCH_ASSOC);
     if (!$fields) {
-      throw new \RuntimeException('Table ' . $this->table . ' does not exist.');
+      throw new Exceptions\BurnerException('Table ' . $this->table . ' does not exist.');
     }
     //we only really care about the column names
     return array_reduce($fields, function( $carry, $column ) {
@@ -127,7 +127,7 @@ class Burner {
     if ($key) {
       return $key['Column_name'];
     }
-    return FALSE;
+    throw new Exceptions\BurnerException();
   }
   
   /**
@@ -135,7 +135,7 @@ class Burner {
    * @param array $where
    */
   protected function fetchOne(array $where) {
-    $stmt = $this->buildQueryStatement($where);      
+    $stmt = $this->buildFetchQueryStatement($where);      
     $data = $stmt->fetch(\PDO::FETCH_ASSOC);    
     if( $data ) {
       $this->orignalData = $data;
@@ -151,7 +151,7 @@ class Burner {
    * @param type $execute
    * @return type
    */
-  protected function buildQueryStatement( array $where, $execute = TRUE ){
+  protected function buildFetchQueryStatement( array $where, $execute = TRUE ){
     $sqlWhereArray = array_map( function($key){ return "$key = :$key";}, array_keys($where));    
     $stmt = $this->pdo->prepare( '
         SELECT *
